@@ -3,63 +3,57 @@ const express = require("express");
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
+
+const allowedOrigin = "https://joaovictor2251.github.io";
+
+// CORS: permite que o site acesse o servidor
 app.use((req, res, next) => {
-  res.header(
-    "Access-Control-Allow-Origin",
-    "https://joaovictor2251.github.io"
-  );
-  res.header(
+  const origin = req.headers.origin;
+
+  res.setHeader("Vary", "Origin");
+  res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, OPTIONS"
   );
-  res.header(
+  res.setHeader(
     "Access-Control-Allow-Headers",
     "Content-Type"
   );
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
-const allowedOrigins = [
-  "https://joaovictor2251.github.io"
-];
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin === allowedOrigin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
 
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
 
+  console.log(`[REQ] ${req.method} ${req.path}`);
   next();
 });
 
 app.use(express.json({ limit: "10kb" }));
 
+// Configuração da Gemini
 const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
-  console.error("Configure a variável GEMINI_API_KEY.");
+  console.error("Configure GEMINI_API_KEY no Render.");
   process.exit(1);
 }
 
 const ai = new GoogleGenAI({ apiKey });
 
+// Teste de conexão
 app.get("/", (req, res) => {
   res.json({ status: "Vix AI servidor online" });
 });
 
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Chat
 app.post("/api/chat", async (req, res) => {
   try {
     const message = req.body?.message;
@@ -85,13 +79,14 @@ app.post("/api/chat", async (req, res) => {
       }
     });
 
-    res.json({
+    return res.json({
       reply: response.text || "Não consegui gerar uma resposta."
     });
   } catch (error) {
-    console.error("Erro ao consultar a IA:", error.message);
-    res.status(500).json({
-      error: "Não consegui responder agora. Tente novamente."
+    console.error("Erro na Gemini:", error.message);
+
+    return res.status(500).json({
+      error: "Falha ao consultar a IA. Confira os logs do servidor."
     });
   }
 });

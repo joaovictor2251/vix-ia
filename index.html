@@ -223,6 +223,48 @@
         form.requestSubmit();
       }
     });
-  </script>
+
+const API_URL = "https://vix-ai-server.onrender.com/";
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const question = input.value.trim();
+  if (!question || send.disabled) return;
+
+  document.getElementById("welcome")?.remove();
+  addMessage(question, "user");
+
+  input.value = "";
+  send.disabled = true;
+
+  const answer = addMessage("Pensando...", "assistant");
+
+  try {
+    const response = await fetch(`${API_URL}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message: question })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Erro ao consultar a IA.");
+    }
+
+    answer.textContent = data.reply;
+  } catch (error) {
+    answer.textContent =
+      "Não consegui conectar à Vix AI. Verifique o servidor e tente novamente.";
+    console.error(error);
+  } finally {
+    send.disabled = false;
+    input.focus();
+  }
+});
+
 </body>
 </html>
